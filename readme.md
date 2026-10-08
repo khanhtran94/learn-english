@@ -34,3 +34,14 @@ pip install fastapi "uvicorn[standard]"
 pip freeze > requirements.txt
 
 ```
+
+Chạy tại thư mục backend:
+```cmd
+uvicorn app.main:app --reload
+```
+
+- khi chay project backend, cần chạy câu lệnh 
+```cmd
+.\.venv\Scripts\Activate.ps1
+```
+trong thư mục backend
