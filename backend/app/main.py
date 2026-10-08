@@ -6,6 +6,7 @@ from docx import Document
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
+from app.services.vocabulary_service import analyze_vocabulary
 
 app = FastAPI(title="Learn English API")
 
@@ -119,10 +120,17 @@ async def analyze(
             status_code=422,
             detail="Không tìm thấy văn bản trong tài liệu.",
         )
-
+    try:
+        vocabulary_result = analyze_vocabulary(extracted_text)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=413,
+            detail=str(exc),
+        ) from exc
     return {
         "source": source,
         "filename": filename,
         "text": extracted_text,
         "character_count": len(extracted_text),
+        "analysis": vocabulary_result,
     }
