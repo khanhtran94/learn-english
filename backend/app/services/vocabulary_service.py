@@ -3,6 +3,8 @@ from collections import Counter, defaultdict
 
 import spacy
 
+from app.services.phrase_service import analyze_phrases
+
 # Load model một lần khi module được import.
 # Không load lại mỗi khi có request.
 nlp = spacy.load("en_core_web_sm")
@@ -17,6 +19,9 @@ def analyze_vocabulary(text: str) -> dict:
             "total_words": 0,
             "unique_words": 0,
             "words": [],
+            "total_phrases": 0,
+            "unique_phrases": 0,
+            "phrases": [],
         }
 
     if len(text) > MAX_TEXT_LENGTH:
@@ -80,4 +85,5 @@ def analyze_vocabulary(text: str) -> dict:
         "total_words": sum(word_counter.values()),
         "unique_words": len(words),
         "words": words,
+        **analyze_phrases(doc),
     }

@@ -1,4 +1,4 @@
-﻿export interface VocabularyWord {
+export interface VocabularyWord {
   word: string;
   frequency: number;
   forms: string[];
@@ -6,7 +6,18 @@
   example: string;
 }
 
+export interface VocabularyPhrase {
+  phrase: string;
+  frequency: number;
+  forms: string[];
+  types: ("noun_chunk" | "candidate")[];
+  example: string;
+}
+
 export interface VocabularyAnalysis {
+  total_phrases: number;
+  unique_phrases: number;
+  phrases: VocabularyPhrase[];
   total_tokens: number;
   total_words: number;
   unique_words: number;

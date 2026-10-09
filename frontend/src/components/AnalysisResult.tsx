@@ -1,8 +1,10 @@
-﻿import {
+import {
   Alert, Box, Card, CardContent, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import type { AnalyzeResponse } from "../types/analysis";
+
+import PhraseResults from "./PhraseResults";
 
 type AnalysisResultProps = {
   result: AnalyzeResponse;
@@ -52,6 +54,7 @@ function AnalysisResult({ result }: AnalysisResultProps) {
           Word forms are grouped under their base word.
         </Typography>
 
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 700, mb: 1 }}>Words</Typography>
         {analysis.words.length === 0 ? (
           <Alert severity="info">No vocabulary words were found in this text.</Alert>
         ) : (
@@ -84,6 +87,8 @@ function AnalysisResult({ result }: AnalysisResultProps) {
             </Table>
           </TableContainer>
         )}
+
+        <PhraseResults analysis={analysis} />
 
         <TextField
           fullWidth
