@@ -169,7 +169,7 @@ class DictionaryService:
 @lru_cache(maxsize=1)
 def get_dictionary_service():
     remote = None
-    url, key = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    url, key = os.getenv("SUPABASE_API_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     if url and key:
         from supabase import create_client
         try:

@@ -10,6 +10,8 @@ import type { AnalyzeResponse } from "./types/analysis";
 import { API_URL } from "./services/api";
 import DictionarySearch from "./components/DictionarySearch";
 import DictionaryDialog from "./components/DictionaryDialog";
+import VocabularyLibrary from "./components/VocabularyLibrary";
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function App() {
@@ -104,6 +106,7 @@ function App() {
       <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fb", py: 6 }}>
         <Container maxWidth="md">
           <AppHeader />
+          <VocabularyLibrary />
 
           <MaterialInputForm
             text={text}

@@ -93,7 +93,7 @@ API:
   không có nghĩa 1 giờ; cache hit không tiêu tốn lượt Gemini. Giới hạn này chưa
   phân tán giữa nhiều máy/container; triển khai nhiều máy cần bộ đếm chung.
 - Supabase là cache nghĩa tùy chọn: chạy `backend/sql/dictionary_cache.sql` trong
-  SQL Editor rồi cấu hình `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` ở backend.
+  SQL Editor rồi cấu hình `SUPABASE_API_URL`, `SUPABASE_SERVICE_ROLE_KEY` ở backend.
   RLS không cho anon/authenticated đọc hoặc ghi bảng. Nếu Supabase lỗi, dùng cache
   SQLite. Audio lưu local. Chưa cần Supabase để chạy bản local.
 - Nghĩa/IPA là dữ liệu do Gemini tạo; chất lượng phụ thuộc model. Cụm được tra bằng
@@ -108,3 +108,41 @@ Kiểm thử offline (không dùng quota Gemini), từ thư mục backend:
 Tài liệu: https://ai.google.dev/gemini-api/docs/structured-output,
 https://ai.google.dev/gemini-api/docs/speech-generation,
 https://ai.google.dev/gemini-api/docs/rate-limits.
+
+## Hiển thị kho từ Supabase
+
+Cài dependency trong backend: `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+Điền chuỗi PostgreSQL vào `backend/.env`:
+
+```dotenv
+SUPABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres
+```
+
+Thay mật khẩu thật (URL-encode ký tự đặc biệt), không giữ dấu ngoặc vuông.
+Backend đọc `.env` bằng python-dotenv và kết nối bằng psycopg2, bắt buộc SSL,
+timeout kết nối/truy vấn 10 giây, truy vấn tham số hóa và đóng kết nối sau mỗi request.
+Nếu mạng không hỗ trợ IPv6 cho direct connection, dùng chuỗi Session pooler lấy
+trong mục Connect của Supabase; sao chép cả hostname, username và port chính xác.
+Khởi động lại backend sau khi thay đổi `.env`.
+
+Schema cần đủ các bảng đã thiết kế và khóa ngoại. Việc đọc DB không cần khóa
+service_role. Chỉ phần nghe audio private Storage/cache từ điển mới cần thêm:
+
+```dotenv
+SUPABASE_API_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVER_KEY
+```
+
+Không đưa mật khẩu PostgreSQL hoặc khóa server vào frontend.
+
+- `GET /entries?page=1&page_size=20&kind=word`: danh sách theo tần suất giảm dần,
+  phân trang, kèm nghĩa, phát âm và tiến độ. Bỏ `kind` để xem cả từ lẫn cụm.
+- `GET /entries/pronunciations/{id}/audio`: tạo URL nghe audio đã lưu trong Storage,
+  có hiệu lực 10 phút. Không tạo audio mới hoặc gọi Gemini.
+- Mục **Kho từ đã lưu** nằm ở đầu trang. Bấm **Tải lại dữ liệu** sau khi thêm dữ liệu
+  trong Supabase; bấm một từ để mở chi tiết. Thiếu nghĩa/audio/tiến độ sẽ hiện trạng
+  thái chưa có dữ liệu, không làm mất từ khỏi danh sách.
+- Các endpoint này chỉ đọc. Upload/phân tích hiện chưa tự ghi vào các bảng mới.
+- Thiếu cấu hình/lỗi PostgreSQL: 503; lỗi Storage: 502; chưa có audio: 404.
+- Bản hiện tại dùng backend cá nhân/local. Trước khi đưa backend ra Internet cần
+  xác thực người dùng cho các endpoint dùng quyền server.

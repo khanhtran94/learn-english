@@ -10,8 +10,11 @@ from app.services.vocabulary_service import analyze_vocabulary
 
 from app.dictionary_routes import router as dictionary_router
 
+from app.library_routes import router as library_router
+
 app = FastAPI(title="Learn English API")
 app.include_router(dictionary_router)
+app.include_router(library_router)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc"}
