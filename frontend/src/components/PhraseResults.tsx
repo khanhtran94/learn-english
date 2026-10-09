@@ -1,14 +1,15 @@
-﻿import {
-  Alert, Box, Chip, Table, TableBody, TableCell, TableContainer,
+import {
+  Alert, Button, Box, Chip, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Typography,
 } from "@mui/material";
 import type { VocabularyAnalysis } from "../types/analysis";
 
 type PhraseResultsProps = {
   analysis: VocabularyAnalysis;
+  onLookup: (term: string) => void;
 };
 
-function PhraseResults({ analysis }: PhraseResultsProps) {
+function PhraseResults({ analysis, onLookup }: PhraseResultsProps) {
   return (
     <Box sx={{ mt: 4 }}>
       <Typography variant="h6" component="h3" sx={{ fontWeight: 700 }}>
@@ -36,7 +37,7 @@ function PhraseResults({ analysis }: PhraseResultsProps) {
             <TableBody>
               {analysis.phrases.map((entry) => (
                 <TableRow key={entry.phrase} hover sx={{ "& > *": { verticalAlign: "top", overflowWrap: "anywhere" } }}>
-                  <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>{entry.phrase}</TableCell>
+                  <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}><Button onClick={() => onLookup(entry.forms[0] || entry.phrase)} sx={{ textTransform: "none", justifyContent: "flex-start", p: 0, minWidth: 0 }}>{entry.phrase}</Button></TableCell>
                   <TableCell align="right">{entry.frequency.toLocaleString()}</TableCell>
                   <TableCell>{entry.forms.join(", ")}</TableCell>
                   <TableCell>

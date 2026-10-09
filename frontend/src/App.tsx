@@ -7,10 +7,13 @@ import AnalysisResult from "./components/AnalysisResult";
 import MaterialInputForm from "./components/MaterialInputForm";
 import type { AnalyzeResponse } from "./types/analysis";
 
-const API_URL = "http://localhost:8000";
+import { API_URL } from "./services/api";
+import DictionarySearch from "./components/DictionarySearch";
+import DictionaryDialog from "./components/DictionaryDialog";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function App() {
+  const [dictionaryTerm, setDictionaryTerm] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +116,9 @@ function App() {
             onAnalyze={handleAnalyze}
           />
 
-          {result && <AnalysisResult result={result} />}
+          <DictionarySearch onLookup={setDictionaryTerm} />
+          {result && <AnalysisResult result={result} onLookup={setDictionaryTerm} />}
+          {dictionaryTerm && <DictionaryDialog key={dictionaryTerm} term={dictionaryTerm} onClose={() => setDictionaryTerm(null)} />}
         </Container>
       </Box>
     </>

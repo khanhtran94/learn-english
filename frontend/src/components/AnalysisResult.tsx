@@ -1,5 +1,5 @@
 import {
-  Alert, Box, Card, CardContent, Chip, Table, TableBody,
+  Alert, Button, Box, Card, CardContent, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import type { AnalyzeResponse } from "../types/analysis";
@@ -8,9 +8,10 @@ import PhraseResults from "./PhraseResults";
 
 type AnalysisResultProps = {
   result: AnalyzeResponse;
+  onLookup: (term: string) => void;
 };
 
-function AnalysisResult({ result }: AnalysisResultProps) {
+function AnalysisResult({ result, onLookup }: AnalysisResultProps) {
   const { analysis } = result;
   const statistics = [
     { label: "Characters", value: result.character_count },
@@ -73,7 +74,7 @@ function AnalysisResult({ result }: AnalysisResultProps) {
                 {analysis.words.map((entry) => (
                   <TableRow key={entry.word} hover sx={{ "& > *": { verticalAlign: "top" } }}>
                     <TableCell component="th" scope="row" sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
-                      {entry.word}
+                      <Button onClick={() => onLookup(entry.word)} sx={{ textTransform: "none", justifyContent: "flex-start", p: 0, minWidth: 0 }}>{entry.word}</Button>
                     </TableCell>
                     <TableCell align="right">{entry.frequency.toLocaleString()}</TableCell>
                     <TableCell sx={{ overflowWrap: "anywhere" }}>{entry.forms.join(", ") || "—"}</TableCell>
@@ -88,7 +89,7 @@ function AnalysisResult({ result }: AnalysisResultProps) {
           </TableContainer>
         )}
 
-        <PhraseResults analysis={analysis} />
+        <PhraseResults analysis={analysis} onLookup={onLookup} />
 
         <TextField
           fullWidth

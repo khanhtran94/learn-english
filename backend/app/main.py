@@ -8,7 +8,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pypdf import PdfReader
 from app.services.vocabulary_service import analyze_vocabulary
 
+from app.dictionary_routes import router as dictionary_router
+
 app = FastAPI(title="Learn English API")
+app.include_router(dictionary_router)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc"}
@@ -19,6 +22,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Retry-After"],
 )
 
 
