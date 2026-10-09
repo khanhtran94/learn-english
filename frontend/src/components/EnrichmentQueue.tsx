@@ -25,7 +25,8 @@ export default function EnrichmentQueue({ entryIds, autoStart = false, onComplet
         const data = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
         if (response.status === 429 || response.status === 409 || data?.retry_after > 0) {
-          const delay = Number(response.headers.get("Retry-After")) || data?.retry_after || 60;
+          const delay = Number(response.headers.get("Retry-After")) || Number(data?.retry_after);
+          if (!Number.isFinite(delay) || delay <= 0) throw new Error("API chưa cung cấp thời gian chờ. Vui lòng thử lại sau.");
           setWaiting(true);
           setRetryAt(Date.now() + Math.max(1, delay) * 1000);
           return;
@@ -57,7 +58,7 @@ export default function EnrichmentQueue({ entryIds, autoStart = false, onComplet
     <Box sx={{ my: 2 }}>
       <Typography sx={{ fontWeight: 600 }}>Tra nghĩa và lưu audio</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-        {index}/{total} mục đã xử lý. Dùng lại nghĩa và audio đã lưu; tối đa 15 lượt gọi Gemini/phút.
+        {index}/{total} mục đã xử lý. Dùng lại nghĩa và audio đã lưu; tự chờ theo giới hạn API được cấu hình.
       </Typography>
       {running && <LinearProgress variant="determinate" value={index / total * 100} sx={{ mb: 1 }} />}
       {waiting && running && <Alert severity="info">Đang chờ lượt gọi tiếp theo. Bạn có thể tạm dừng.</Alert>}

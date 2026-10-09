@@ -84,7 +84,7 @@ API:
   tạo khi bấm **Nghe phát âm**, không tự gọi thêm khi tra nghĩa.
 - Không tìm thấy nghĩa: HTTP 200, `found=false`, `meanings=[]`; thiếu IPA: null.
   Audio rỗng: 404. Dữ liệu sai/lỗi provider: 502; timeout: 504; thiếu API key: 503.
-- Giới hạn **15 lần gọi Gemini trong cửa sổ trượt 60 giây**, dùng chung tra nghĩa
+- Giới hạn **3 lần gọi Gemini trong cửa sổ trượt 60 giây**, dùng chung tra nghĩa
   và TTS, kể cả lần gọi lỗi. Không retry SDK tự động. HTTP 429 có `Retry-After`;
   UI đếm ngược và cho thử lại. Hạn mức thực tế của Google có thể thấp hơn hoặc
   có thêm giới hạn token/ngày; lỗi 429 từ Google cũng được hiển thị.
@@ -189,7 +189,7 @@ hàng đợi sau upload dùng luồng lưu vào các bảng này.
 - Sau phân tích, giữ trang mở để hàng đợi tiếp tục. Có thể tạm dừng/tiếp tục.
   Đóng hoặc tải lại trang sẽ dừng hàng đợi phía trình duyệt; dữ liệu đã lưu vẫn còn.
   Trong Kho từ có nút bổ sung từng mục, không cần upload lại để thử tiếp.
-- Dùng chung hạn mức 15 lần gọi Gemini/60 giây cho nghĩa và TTS. Thông thường một
+- Dùng chung hạn mức 3 lần gọi Gemini/60 giây cho nghĩa và TTS. Thông thường một
   mục mới cần hai lần gọi. Cache hit không tiêu lượt. Gặp 429, UI chờ Retry-After;
   lỗi khác tạm dừng và cho thử lại. Hạn mức của nhà cung cấp có thể thấp hơn.
 - Có nghĩa/audio thì dùng lại; thiếu audio chỉ tạo/upload audio. Không tìm thấy
@@ -201,3 +201,21 @@ hàng đợi sau upload dùng luồng lưu vào các bảng này.
 - Response enrich: `status=complete|partial|not_found`, `meanings_saved`,
   `audio_saved`, `message`, `retry_after`. Hai cờ saved chỉ phần mới lưu lần này.
 - Tham khảo upload Storage: https://supabase.com/docs/reference/python/storage-from-upload
+
+
+## Cấu hình giới hạn API
+
+Chỉnh `backend/rate_limits.toml`, sau đó khởi động lại backend:
+
+```toml
+[gemini]
+max_requests = 3
+window_seconds = 60
+```
+
+Đây là một hạn mức chung cho tất cả lần gọi Gemini (tra nghĩa + TTS), không phải
+3 lượt riêng cho mỗi loại. Lần gọi lỗi vẫn tính lượt; cache hit không tính lượt.
+Backend trả Retry-After theo cửa sổ thực tế; UI sử dụng thời gian này, không tự
+ấn định hạn mức. Cấu hình phải là số nguyên dương; cấu hình lỗi sẽ chặn gọi API.
+Lịch sử gọi chưa hết hạn vẫn được giữ sau khi restart. Giới hạn dùng chung giữa
+các worker trên cùng máy dùng cùng file SQLite, chưa dùng chung giữa nhiều máy.

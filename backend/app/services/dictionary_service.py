@@ -13,6 +13,7 @@ from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
+from app.rate_limits import load_rate_limits
 from app.dictionary_models import DictionaryEntry, LookupResponse
 from app.services.dictionary_store import DictionaryStore, RateLimitError
 
@@ -49,9 +50,12 @@ class DictionaryService:
 
     def call(self, operation):
         try:
+            limits = load_rate_limits()
             self.store.reserve_call()
         except RateLimitError as exc:
-            raise DictionaryError(429, "Đã đạt giới hạn 15 lượt/phút. Vui lòng chờ rồi thử lại.", exc.retry_after) from exc
+            raise DictionaryError(429, f"Đã đạt giới hạn {exc.max_requests} lượt/{exc.window_seconds} giây. Vui lòng chờ rồi thử lại.", exc.retry_after) from exc
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise DictionaryError(503, "Cấu hình backend/rate_limits.toml không hợp lệ.") from exc
         try:
             return operation()
         except httpx.TimeoutException as exc:
@@ -61,7 +65,7 @@ class DictionaryService:
             if isinstance(exc, httpx.HTTPStatusError):
                 code = exc.response.status_code
             if code == 429:
-                raise DictionaryError(429, "Gemini đã hết hạn mức. Vui lòng thử lại sau.", 60) from exc
+                raise DictionaryError(429, "Gemini đã hết hạn mức. Vui lòng thử lại sau.", limits.window_seconds) from exc
             # Never expose SDK errors, request URLs, or keys to the caller.
             raise DictionaryError(502, "Không thể kết nối Gemini hoặc model chưa khả dụng.") from exc
 

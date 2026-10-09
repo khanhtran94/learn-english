@@ -50,7 +50,7 @@ class DictionaryTests(unittest.TestCase):
         self.client.models.generate_content.assert_called_once()
 
     def test_rolling_rate_limit_and_boundary(self):
-        for _ in range(15):
+        for _ in range(3):
             self.store.reserve_call(now=100)
         with self.assertRaises(RateLimitError) as caught:
             DictionaryStore(self.path).reserve_call(now=159)
@@ -65,9 +65,12 @@ class DictionaryTests(unittest.TestCase):
             except RateLimitError:
                 return False
         with ThreadPoolExecutor(max_workers=8) as pool:
-            self.assertEqual(sum(pool.map(attempt, range(25))), 15)
+            self.assertEqual(sum(pool.map(attempt, range(25))), 3)
 
-    def test_no_data_is_cached_but_errors_are_not(self):
+    @patch("app.services.dictionary_store.load_rate_limits")
+    def test_no_data_is_cached_but_errors_are_not(self, limits):
+        from app.rate_limits import RateLimits
+        limits.return_value = RateLimits(10, 60)
         self.client.models.generate_content.return_value.text = '{"found":false,"ipa":null,"meanings":[]}'
         self.assertFalse(self.service.lookup("unknown").found)
         self.assertTrue(self.service.lookup("unknown").cached)
@@ -118,7 +121,7 @@ class DictionaryTests(unittest.TestCase):
         self.assertEqual(self.service.audio("bank"), audio)
         self.assertEqual(self.service.audio("bank"), audio)
         self.assertEqual(len(requests), 1)
-        for _ in range(14):
+        for _ in range(2):
             self.store.reserve_call()
         with self.assertRaises(DictionaryError) as caught:
             self.service.lookup("bank")
@@ -154,7 +157,7 @@ class DictionaryTests(unittest.TestCase):
             self.assertEqual(response.json()["term"], "bank")
             for body in ({"term": ["bank", "car"]}, {"term": "bank, car"}, {"term": ""}, {"term": "a " * 13}, {"term": "bank", "extra": True}):
                 self.assertEqual(api.post('/dictionary/lookup', json=body).status_code, 422)
-            for _ in range(14):
+            for _ in range(2):
                 self.store.reserve_call()
             response = api.post('/dictionary/lookup', json={"term": "car"})
             self.assertEqual(response.status_code, 429)
