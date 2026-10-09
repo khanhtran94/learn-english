@@ -170,7 +170,8 @@ Các số đếm là số mục của lần nhập, bao gồm mục mới và m�
 lại đều cộng tần suất. Chưa có mã idempotency cho trường hợp gửi lại do mất phản hồi.
 Không tự retry request ghi. Lỗi ghi DB trả 503; không báo thành công khi lưu lỗi.
 
-Sau khi upload/lưu thành công, frontend xử lý lần lượt `storage.entry_ids` qua
+Sau khi upload/lưu thành công, frontend chỉ hiển thị nút **Tra nghĩa và lưu audio**.
+Chỉ khi người dùng bấm nút này, frontend mới xử lý lần lượt `storage.entry_ids` qua
 `POST /entries/{id}/enrich`. Mỗi request xử lý đúng một từ/cụm: nghĩa và ví dụ vào
 `meanings`, IPA và metadata audio vào `pronunciations`, trạng thái vào `entries`.
 Không sửa tần suất hoặc lịch học khi bổ sung dữ liệu. `review_logs` chỉ dành cho
@@ -178,7 +179,7 @@ lần học thực tế. Ô tra từ điển độc lập vẫn chỉ tra cứu/
 hàng đợi sau upload dùng luồng lưu vào các bảng này.
 
 
-## Tự động lưu nghĩa và audio
+## Tra nghĩa và lưu audio theo yêu cầu
 
 - Cấu hình `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TTS_MODEL`, chuỗi PostgreSQL
   `SUPABASE_URL`, URL HTTPS `SUPABASE_API_URL` và `SUPABASE_SERVICE_ROLE_KEY`.
@@ -186,7 +187,8 @@ hàng đợi sau upload dùng luồng lưu vào các bảng này.
   `entries/<entry_id>/en-US/Kore.wav`; DB lưu path, MIME, kích thước và trạng thái.
   URL có thời hạn chỉ được tạo khi nghe. Upload dùng `upsert=true` tại đường dẫn
   cố định để thử lại an toàn khi upload thành công nhưng transaction DB thất bại.
-- Sau phân tích, giữ trang mở để hàng đợi tiếp tục. Có thể tạm dừng/tiếp tục.
+- Phân tích và lưu vào kho không tự gọi Gemini. Bấm **Tra nghĩa và lưu audio**
+  để bắt đầu; giữ trang mở để hàng đợi tiếp tục. Có thể tạm dừng/tiếp tục.
   Đóng hoặc tải lại trang sẽ dừng hàng đợi phía trình duyệt; dữ liệu đã lưu vẫn còn.
   Trong Kho từ có nút bổ sung từng mục, không cần upload lại để thử tiếp.
 - Dùng chung hạn mức 3 lần gọi Gemini/60 giây cho nghĩa và TTS. Thông thường một

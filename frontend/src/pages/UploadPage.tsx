@@ -106,7 +106,7 @@ export default function UploadPage({ onLookup }: { onLookup: (term: string) => v
         Đã lưu {result.storage.word_count} từ và {result.storage.phrase_count} cụm từ;
         cộng {result.storage.occurrences_added} lượt xuất hiện vào kho.
       </Alert>}
-      {result?.storage.entry_ids && <EnrichmentQueue entryIds={result.storage.entry_ids} autoStart />}
+      {result?.storage.entry_ids && <EnrichmentQueue entryIds={result.storage.entry_ids} />}
       {result && <AnalysisResult result={result} onLookup={onLookup} />}
     </>
   );
