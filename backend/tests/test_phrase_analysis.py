@@ -1,4 +1,5 @@
-﻿import unittest
+import unittest
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -47,11 +48,12 @@ class PhraseAnalysisTests(unittest.TestCase):
         document.add_paragraph("The red cars passed a red car.")
         content = BytesIO()
         document.save(content)
-        with TestClient(app) as client:
+        with patch('app.main.save_analysis', return_value={'saved': True}) as save, TestClient(app) as client:
             responses = [
                 client.post("/analyze", data={"text": "The red cars passed a red car."}),
                 client.post("/analyze", files={"file": ("sample.docx", content.getvalue(), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}),
             ]
+        self.assertEqual(save.call_count, 2)
         for response in responses:
             self.assertEqual(response.status_code, 200)
             analysis = response.json()["analysis"]

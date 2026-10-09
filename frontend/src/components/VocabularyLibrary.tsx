@@ -1,5 +1,6 @@
+import EnrichmentQueue from "./EnrichmentQueue";
 import StoredAudio from "./StoredAudio";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button,
   Card, CardContent, Chip, CircularProgress, MenuItem, Pagination,
@@ -24,10 +25,11 @@ async function readResponse(response: Response) {
   return data;
 }
 
-function EntryDetails({ entry }: { entry: SavedEntry }) {
+function EntryDetails({ entry, onComplete }: { entry: SavedEntry; onComplete: () => void }) {
   const progress = entry.learning_progress;
   return (
     <Stack spacing={2}>
+      {(entry.meanings.length === 0 || !entry.pronunciations.some((item) => item.audio_status === "ready")) && <EnrichmentQueue entryIds={[entry.id]} onComplete={onComplete} />}
       <Typography variant="body2" color="text.secondary">
         Gặp lần đầu: {dateLabel(entry.first_seen_at)} · Gặp gần nhất: {dateLabel(entry.last_seen_at)}
       </Typography>
@@ -87,7 +89,7 @@ function LibraryResults({ kind }: { kind: string }) {
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [page, kind, version]);
-  const refresh = () => { setLoading(true); setError(""); setData(null); setVersion((value) => value + 1); };
+  const refresh = useCallback(() => { setLoading(true); setError(""); setData(null); setVersion((value) => value + 1); }, []);
   return (
     <Box>
       <Button onClick={refresh} disabled={loading} sx={{ mb: 2 }}>Tải lại dữ liệu</Button>
@@ -107,7 +109,7 @@ function LibraryResults({ kind }: { kind: string }) {
                   <Typography variant="body2" color="text.secondary">{lookupLabels[entry.lookup_status] || entry.lookup_status}</Typography>
                 </Stack>
               </AccordionSummary>
-              <AccordionDetails id={`entry-${entry.id}`}><EntryDetails entry={entry} /></AccordionDetails>
+              <AccordionDetails id={`entry-${entry.id}`}><EntryDetails entry={entry} onComplete={refresh} /></AccordionDetails>
             </Accordion>
           ))}
           {data.total > data.page_size && <Pagination sx={{ mt: 2 }} count={Math.ceil(data.total / data.page_size)} page={page} onChange={(_, value) => { setLoading(true); setError(""); setData(null); setPage(value); }} />}

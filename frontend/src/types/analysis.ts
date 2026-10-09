@@ -25,6 +25,13 @@ export interface VocabularyAnalysis {
 }
 
 export interface AnalyzeResponse {
+  storage: {
+    saved: boolean;
+    entry_ids: string[];
+    word_count: number;
+    phrase_count: number;
+    occurrences_added: number;
+  };
   source: string;
   filename: string | null;
   text: string;

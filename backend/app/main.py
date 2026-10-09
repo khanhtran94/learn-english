@@ -1,4 +1,6 @@
 
+from starlette.concurrency import run_in_threadpool
+from app.services.import_service import save_analysis
 from io import BytesIO
 from pathlib import Path
 
@@ -11,10 +13,12 @@ from app.services.vocabulary_service import analyze_vocabulary
 from app.dictionary_routes import router as dictionary_router
 
 from app.library_routes import router as library_router
+from app.enrichment_routes import router as enrichment_router
 
 app = FastAPI(title="Learn English API")
 app.include_router(dictionary_router)
 app.include_router(library_router)
+app.include_router(enrichment_router)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".doc"}
@@ -128,13 +132,15 @@ async def analyze(
             detail="Không tìm thấy văn bản trong tài liệu.",
         )
     try:
-        vocabulary_result = analyze_vocabulary(extracted_text)
+        vocabulary_result = await run_in_threadpool(analyze_vocabulary, extracted_text)
     except ValueError as exc:
         raise HTTPException(
             status_code=413,
             detail=str(exc),
         ) from exc
+    storage = await run_in_threadpool(save_analysis, vocabulary_result)
     return {
+        "storage": storage,
         "source": source,
         "filename": filename,
         "text": extracted_text,

@@ -12,7 +12,7 @@ ENV_PATH = Path(__file__).resolve().parents[1] / '.env'
 
 
 @contextmanager
-def database_cursor():
+def database_cursor(*, readonly: bool = True):
     load_dotenv(ENV_PATH, encoding='utf-8-sig')
     url = os.getenv('SUPABASE_URL', '').strip()
     if not url.startswith(('postgresql://', 'postgres://')):
@@ -20,14 +20,15 @@ def database_cursor():
     connection = None
     try:
         connection = psycopg2.connect(url, sslmode='require', connect_timeout=10)
-        connection.set_session(readonly=True, isolation_level='REPEATABLE READ')
+        connection.set_session(readonly=readonly, isolation_level='REPEATABLE READ' if readonly else 'READ COMMITTED')
         with connection:
             with connection.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute("SET LOCAL statement_timeout = '10s'")
                 yield cursor
     except psycopg2.Error as exc:
         # PostgreSQL errors may contain connection details; never return them.
-        raise HTTPException(503, 'Không đọc được PostgreSQL. Kiểm tra URL, mật khẩu, kết nối mạng và các bảng đã tạo.') from exc
+        message = ('Không đọc được PostgreSQL. Kiểm tra URL, mật khẩu, kết nối mạng và các bảng đã tạo.' if readonly else 'Không lưu được kết quả vào PostgreSQL. Vui lòng kiểm tra kết nối DB trước khi thử lại.')
+        raise HTTPException(503, message) from exc
     finally:
         if connection is not None:
             connection.close()

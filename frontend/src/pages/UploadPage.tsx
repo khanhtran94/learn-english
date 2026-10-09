@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import { Typography } from "@mui/material";
+import { Alert, Button, Typography } from "@mui/material";
 import MaterialInputForm from "../components/MaterialInputForm";
 import AnalysisResult from "../components/AnalysisResult";
 import type { AnalyzeResponse } from "../types/analysis";
+import EnrichmentQueue from "../components/EnrichmentQueue";
 import { API_URL } from "../services/api";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -50,6 +51,7 @@ export default function UploadPage({ onLookup }: { onLookup: (term: string) => v
   };
 
   const clearFile = () => {
+    setResult(null);
     setFile(null);
   };
 
@@ -100,6 +102,11 @@ export default function UploadPage({ onLookup }: { onLookup: (term: string) => v
         onTextChange={handleTextChange} onFileChange={handleFileChange}
         onClearFile={clearFile} onAnalyze={handleAnalyze}
       />
+      {result?.storage.saved && <Alert severity="success" sx={{ mt: 3 }} action={<Button color="inherit" href="#library">Xem kho từ</Button>}>
+        Đã lưu {result.storage.word_count} từ và {result.storage.phrase_count} cụm từ;
+        cộng {result.storage.occurrences_added} lượt xuất hiện vào kho.
+      </Alert>}
+      {result?.storage.entry_ids && <EnrichmentQueue entryIds={result.storage.entry_ids} autoStart />}
       {result && <AnalysisResult result={result} onLookup={onLookup} />}
     </>
   );

@@ -142,7 +142,7 @@ Không đưa mật khẩu PostgreSQL hoặc khóa server vào frontend.
 - Mục **Kho từ đã lưu** nằm ở đầu trang. Bấm **Tải lại dữ liệu** sau khi thêm dữ liệu
   trong Supabase; bấm một từ để mở chi tiết. Thiếu nghĩa/audio/tiến độ sẽ hiện trạng
   thái chưa có dữ liệu, không làm mất từ khỏi danh sách.
-- Các endpoint này chỉ đọc. Upload/phân tích hiện chưa tự ghi vào các bảng mới.
+- Các endpoint `/entries` chỉ đọc; `/analyze` lưu từ/cụm và tiến độ ban đầu như mô tả bên dưới.
 - Thiếu cấu hình/lỗi PostgreSQL: 503; lỗi Storage: 502; chưa có audio: 404.
 - Bản hiện tại dùng backend cá nhân/local. Trước khi đưa backend ra Internet cần
   xác thực người dùng cho các endpoint dùng quyền server.
@@ -157,3 +157,47 @@ Không đưa mật khẩu PostgreSQL hoặc khóa server vào frontend.
   Đây là chế độ luyện tập; chưa ghi nhớ/quên hoặc cập nhật lịch ôn vào DB.
 
 Điều hướng hỗ trợ URL hash và nút Back/Forward của trình duyệt.
+
+## Lưu kết quả sau khi tải tài liệu
+
+`POST /analyze` hiện phân tích rồi lưu `entries` và `learning_progress` trong một
+transaction PostgreSQL. Từ/cụm cũ được cộng tần suất và cập nhật lần gặp gần nhất;
+nghĩa, audio và tiến độ học cũ không bị ghi đè. Mục mới dùng các giá trị mặc định
+của schema (`lookup_status=pending`, tiến độ `new`). Không lưu toàn bộ tài liệu.
+
+Response có `storage`: `saved`, `word_count`, `phrase_count`, `occurrences_added`.
+Các số đếm là số mục của lần nhập, bao gồm mục mới và mục đã có. Mỗi lần gửi nhập
+lại đều cộng tần suất. Chưa có mã idempotency cho trường hợp gửi lại do mất phản hồi.
+Không tự retry request ghi. Lỗi ghi DB trả 503; không báo thành công khi lưu lỗi.
+
+Sau khi upload/lưu thành công, frontend xử lý lần lượt `storage.entry_ids` qua
+`POST /entries/{id}/enrich`. Mỗi request xử lý đúng một từ/cụm: nghĩa và ví dụ vào
+`meanings`, IPA và metadata audio vào `pronunciations`, trạng thái vào `entries`.
+Không sửa tần suất hoặc lịch học khi bổ sung dữ liệu. `review_logs` chỉ dành cho
+lần học thực tế. Ô tra từ điển độc lập vẫn chỉ tra cứu/cache; nút trong Kho từ và
+hàng đợi sau upload dùng luồng lưu vào các bảng này.
+
+
+## Tự động lưu nghĩa và audio
+
+- Cấu hình `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TTS_MODEL`, chuỗi PostgreSQL
+  `SUPABASE_URL`, URL HTTPS `SUPABASE_API_URL` và `SUPABASE_SERVICE_ROLE_KEY`.
+- Tạo private bucket `pronunciation` trong Storage. Audio WAV được upload tại
+  `entries/<entry_id>/en-US/Kore.wav`; DB lưu path, MIME, kích thước và trạng thái.
+  URL có thời hạn chỉ được tạo khi nghe. Upload dùng `upsert=true` tại đường dẫn
+  cố định để thử lại an toàn khi upload thành công nhưng transaction DB thất bại.
+- Sau phân tích, giữ trang mở để hàng đợi tiếp tục. Có thể tạm dừng/tiếp tục.
+  Đóng hoặc tải lại trang sẽ dừng hàng đợi phía trình duyệt; dữ liệu đã lưu vẫn còn.
+  Trong Kho từ có nút bổ sung từng mục, không cần upload lại để thử tiếp.
+- Dùng chung hạn mức 15 lần gọi Gemini/60 giây cho nghĩa và TTS. Thông thường một
+  mục mới cần hai lần gọi. Cache hit không tiêu lượt. Gặp 429, UI chờ Retry-After;
+  lỗi khác tạm dừng và cho thử lại. Hạn mức của nhà cung cấp có thể thấp hơn.
+- Có nghĩa/audio thì dùng lại; thiếu audio chỉ tạo/upload audio. Không tìm thấy
+  nghĩa thì lưu `not_found` và không tạo audio. Audio lỗi vẫn commit nghĩa/IPA,
+  trả `status=partial` cùng thông báo; lần sau bổ sung phần thiếu.
+- Một transaction/advisory lock cho mỗi entry ngăn nhiều worker đồng thời ghi
+  trùng nghĩa. Không tự retry mạng trong backend. Nếu DB commit lỗi sau upload,
+  lần thử lại dùng cache Gemini và cùng đường dẫn Storage; không tạo nhiều file.
+- Response enrich: `status=complete|partial|not_found`, `meanings_saved`,
+  `audio_saved`, `message`, `retry_after`. Hai cờ saved chỉ phần mới lưu lần này.
+- Tham khảo upload Storage: https://supabase.com/docs/reference/python/storage-from-upload
