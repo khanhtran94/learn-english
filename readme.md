@@ -221,3 +221,21 @@ Backend trả Retry-After theo cửa sổ thực tế; UI sử dụng thời gia
 ấn định hạn mức. Cấu hình phải là số nguyên dương; cấu hình lỗi sẽ chặn gọi API.
 Lịch sử gọi chưa hết hạn vẫn được giữ sau khi restart. Giới hạn dùng chung giữa
 các worker trên cùng máy dùng cùng file SQLite, chưa dùng chung giữa nhiều máy.
+
+### Học và ôn flashcard
+
+Màn hình flashcard hiện ghi kết quả học thật (thay cho chế độ chỉ xem trước đây):
+- Anh → Việt: chọn một nghĩa ngắn đúng; có 2–4 lựa chọn tùy dữ liệu trong kho.
+- Nghe → Anh: nhập từ/cụm, chỉ lấy thẻ có audio đã lưu.
+- Việt → Anh: nhập từ/cụm; chấp nhận các từ trong kho có cùng nghĩa ngắn.
+- Mặc định 10 từ/cụm, ưu tiên đến hạn rồi từ mới theo tần suất. Có chế độ ôn lại từ đã học.
+- Mỗi đáp án đúng tăng `correct_count`; `review_count` đếm mọi lượt trả lời.
+- Lịch: 1, 3, 5, 7, 9, 14, 21, 30, 60, 90 ngày, tối đa 90 ngày; tính từ lúc trả lời thành công. Ôn sớm không tăng mốc.
+- Sai đặt lịch 1 ngày và thêm một lượt luyện lại cuối phiên. Luyện lại không tăng mốc lịch ôn.
+- Phiên lưu trong DB, có thể tiếp tục sau khi tải trang; gửi lại cùng câu hỏi không cộng lần học trùng.
+
+Migration: `backend/sql/study_sessions.sql` (đã áp dụng vào DB cấu hình trong phiên triển khai này). Khi dùng DB khác, chạy migration trước khi khởi động backend mới.
+
+`meanings.short_answers` cho phép lưu danh sách nghĩa ngắn riêng. Khi chưa có, ứng dụng tách nghĩa hiện tại theo dấu phẩy/chấm phẩy và bỏ chú thích trong ngoặc. Không gọi Gemini khi học. Cách này loại đáp án nhiễu trùng nghĩa theo chuỗi, chưa nhận biết mọi trường hợp đồng nghĩa ngữ nghĩa. Kho cần ít nhất một nghĩa khác phù hợp để tạo bài trắc nghiệm.
+
+Kiểm tra: từ thư mục backend chạy `.venv/Scripts/python.exe -m unittest discover -s tests`; frontend chạy `npm run build` và `npm run lint`.

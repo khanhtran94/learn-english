@@ -37,6 +37,7 @@ class SavedProgress(BaseModel):
     interval_days: int
     next_review_at: datetime | None = None
     last_review_at: datetime | None = None
+    correct_count: int = 0
     review_count: int
     lapse_count: int
 
@@ -85,7 +86,7 @@ select e.id, e.normalized_text, e.kind, e.frequency, e.lookup_status,
                'status', l.status, 'review_step', l.review_step,
                'interval_days', l.interval_days, 'next_review_at', l.next_review_at,
                'last_review_at', l.last_review_at, 'review_count', l.review_count,
-               'lapse_count', l.lapse_count
+               'correct_count', l.correct_count, 'lapse_count', l.lapse_count
            ) from public.learning_progress l where l.entry_id = e.id
        ) as learning_progress
 from public.entries e

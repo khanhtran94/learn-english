@@ -26,6 +26,7 @@ export interface SavedEntry {
     interval_days: number;
     next_review_at: string | null;
     last_review_at: string | null;
+    correct_count: number;
     review_count: number;
     lapse_count: number;
   } | null;

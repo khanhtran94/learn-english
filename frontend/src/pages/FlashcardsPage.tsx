@@ -1,93 +1,72 @@
-import { useEffect, useState } from "react";
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+﻿import { useEffect, useState } from "react";
+import { Alert, Box, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import StoredAudio from "../components/StoredAudio";
 import { API_URL } from "../services/api";
-import type { LibraryPage, SavedEntry } from "../types/library";
 
-function Flashcard({ entry }: { entry: SavedEntry }) {
-  const [revealed, setRevealed] = useState(false);
-  return (
-    <Card variant="outlined" sx={{ borderRadius: 3, mt: 2 }}>
-      <CardContent sx={{ p: { xs: 3, sm: 5 }, minHeight: 280 }}>
-        <Stack direction="row" spacing={1} sx={{ mb: 3 }}>
-          <Chip label={entry.kind === "word" ? "Từ" : "Cụm từ"} size="small" />
-          <Chip label={`${entry.frequency.toLocaleString("vi-VN")} lần xuất hiện`} size="small" variant="outlined" />
-        </Stack>
-        <Typography variant="h3" component="h2" sx={{ fontWeight: 700, overflowWrap: "anywhere", mb: 2 }}>{entry.normalized_text}</Typography>
-        {entry.pronunciations.map((pronunciation) => (
-          <Box key={pronunciation.id} sx={{ mb: 2 }}>
-            <Typography color="text.secondary">{pronunciation.accent} · {pronunciation.ipa || "Chưa có IPA"}</Typography>
-            {pronunciation.audio_status === "ready" && <StoredAudio id={pronunciation.id} />}
-          </Box>
-        ))}
-        <Button variant="contained" onClick={() => setRevealed((value) => !value)} aria-expanded={revealed} aria-controls="flashcard-answer">
-          {revealed ? "Ẩn nghĩa" : "Lật thẻ — xem nghĩa"}
-        </Button>
-        {revealed && <Box id="flashcard-answer" sx={{ mt: 3 }}>
-          {entry.meanings.map((meaning, index) => (
-            <Box key={meaning.id} sx={{ mb: 2 }}>
-              <Typography sx={{ fontWeight: 600 }}>{index + 1}. {meaning.meaning_vi} ({meaning.part_of_speech})</Typography>
-              {meaning.examples.map((example, i) => <Box key={i} sx={{ mt: 1, pl: 2 }}>
-                <Typography>{example.english}</Typography>
-                <Typography color="text.secondary">{example.vietnamese}</Typography>
-              </Box>)}
-            </Box>
-          ))}
-        </Box>}
-      </CardContent>
-    </Card>
-  );
+type Mode = "en_vi" | "listening" | "vi_en";
+type Session = { id: string; status: string; mode: Mode; summary: { total: number; answered: number; correct: number; incorrect: number; words: number }; question: null | { id: string; is_retry: boolean; prompt: string; audio_id: string | null; options: { id: string; text: string }[] } };
+type Feedback = { correct: boolean; word: string; accepted: string[]; correct_count: number; next_review_at: string; retry_added: boolean; audio_id: string | null; ipa: string | null; meanings: { meaning_vi: string; part_of_speech: string; examples: { english?: string; vietnamese?: string }[] }[] };
+async function api<T>(path: string, body?: unknown): Promise<T> {
+  const response = await fetch(`${API_URL}/study${path}`, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const result = await response.json();
+  if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Không thực hiện được yêu cầu. Vui lòng thử lại.");
+  return result;
 }
-
 export default function FlashcardsPage() {
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState<LibraryPage | null>(null);
-  const [index, setIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [mode, setMode] = useState<Mode>("en_vi");
+  const [scope, setScope] = useState("due_new");
+  const [size, setSize] = useState(10);
+  const [answer, setAnswer] = useState("");
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    const controller = new AbortController();
-    fetch(`${API_URL}/entries?page=${page}&page_size=20`, { signal: controller.signal })
-      .then(async (response) => {
-        const result = await response.json();
-        if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Không tải được thẻ học.");
-        return result as LibraryPage;
-      })
-      .then((result) => { if (!controller.signal.aborted) setData(result); })
-      .catch((err: unknown) => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Không thể kết nối backend."); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [page, attempt]);
-  const cards = data?.items.filter((entry) => entry.meanings.length > 0) ?? [];
-  const card = cards[index];
-  const loadPage = (value: number) => { setLoading(true); setError(""); setData(null); setIndex(0); setPage(value); };
-  return (
-    <Box>
-      <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }}>Học flashcard</Typography>
-      <Typography color="text.secondary" sx={{ mb: 2 }}>Nhớ nghĩa tiếng Việt trước khi lật thẻ. Từ và cụm từ được xếp theo tần suất cao xuống thấp.</Typography>
-      <Alert severity="info" sx={{ mb: 2 }}>Chế độ luyện tập: chưa ghi nhận kết quả nhớ/quên hoặc thay đổi lịch ôn.</Alert>
-      {loading && <Box role="status"><CircularProgress size={24} /> Đang tải thẻ…</Box>}
-      {error && <Alert severity="error" action={<Button onClick={() => { setError(""); setLoading(true); setAttempt((value) => value + 1); }}>Thử lại</Button>}>{error}</Alert>}
-      {!loading && !error && data && <>
-        {data.total === 0 ? <Alert severity="info">Kho từ đang trống. Thêm từ và nghĩa vào kho để bắt đầu học.</Alert> : <>
-          <Typography variant="body2">Nhóm {page}/{Math.max(1, Math.ceil(data.total / data.page_size))} · {cards.length} thẻ có nghĩa trong {data.items.length} từ/cụm</Typography>
-          {!card && <Alert severity="info" sx={{ mt: 2 }}>Nhóm này chưa có từ/cụm đã lưu nghĩa. Bạn có thể xem nhóm khác hoặc kiểm tra Kho từ.</Alert>}
-          {card && <>
-            <Flashcard key={card.id} entry={card} />
-            <Stack direction="row" spacing={2} sx={{ mt: 2, alignItems: "center", justifyContent: "space-between" }}>
-              <Button disabled={index === 0} onClick={() => setIndex((value) => value - 1)}>Thẻ trước</Button>
-              <Typography aria-live="polite">{index + 1}/{cards.length}</Typography>
-              <Button disabled={index === cards.length - 1} onClick={() => setIndex((value) => value + 1)}>Thẻ tiếp</Button>
-            </Stack>
-          </>}
-          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-            <Button disabled={page === 1} onClick={() => loadPage(page - 1)}>Nhóm trước</Button>
-            <Button disabled={page * data.page_size >= data.total} onClick={() => loadPage(page + 1)}>Nhóm tiếp</Button>
-            <Button onClick={() => { loadPage(1); setAttempt((value) => value + 1); }}>Tải lại</Button>
-          </Stack>
-        </>}
-      </>}
-    </Box>
-  );
+    let active = true;
+    api<Session | null>("/sessions/current").then(value => { if (active) { setSession(value); setReady(true); } }).catch((err: Error) => { if (active) setError(err.message); }).finally(() => { if (active) setBusy(false); });
+    return () => { active = false; };
+  }, []);
+  async function act(action: () => Promise<void>) {
+    setBusy(true); setError("");
+    try { await action(); } catch (err) { setError(err instanceof Error ? err.message : "Không kết nối được backend."); } finally { setBusy(false); }
+  }
+  function receive(value: Session | null) { setSession(value); setAnswer(""); setFeedback(null); }
+  const question = session?.question;
+  return <Box>
+    <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 2 }}>Học và ôn flashcard</Typography>
+    <Typography color="text.secondary" sx={{ mb: 2 }}>Ưu tiên từ đến hạn ôn, sau đó từ mới theo tần suất. Mỗi câu đúng tính một lần học; lịch ôn tăng tối đa một mốc cho mỗi từ trong phiên.</Typography>
+    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+    {!ready && <Button disabled={busy} onClick={() => act(async () => { receive(await api<Session | null>("/sessions/current")); setReady(true); })}>{busy ? "Đang tải…" : "Tải lại phiên học"}</Button>}
+    {ready && (!session || session.status !== "active") && <Stack spacing={2}>
+      {session && <Alert severity="success">Đã kết thúc phiên: {session.summary.words} từ/cụm, {session.summary.correct} câu đúng, {session.summary.incorrect} câu sai (gồm câu luyện lại).</Alert>}
+      <TextField select label="Dạng bài" value={mode} onChange={e => setMode(e.target.value as Mode)}>
+        <MenuItem value="en_vi">Tiếng Anh → chọn nghĩa tiếng Việt</MenuItem><MenuItem value="listening">Nghe → nhập tiếng Anh</MenuItem><MenuItem value="vi_en">Tiếng Việt → nhập tiếng Anh</MenuItem>
+      </TextField>
+      <TextField select label="Nội dung" value={scope} onChange={e => setScope(e.target.value)}><MenuItem value="due_new">Đến hạn ôn và từ mới</MenuItem><MenuItem value="learned">Ôn lại các từ đã học</MenuItem></TextField>
+      <TextField select label="Số từ/cụm mỗi phiên" value={size} onChange={e => setSize(Number(e.target.value))}>{[5,10,20,30].map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}</TextField>
+      <Typography variant="body2">Ôn sớm và luyện lại vẫn cộng lần trả lời đúng, nhưng không tăng mốc lịch ôn. Trả lời sai đưa từ về mốc 1 ngày. Bài nghe chỉ dùng thẻ đã có audio.</Typography>
+      <Button disabled={busy} variant="contained" onClick={() => act(async () => receive(await api<Session>("/sessions", { mode, scope, size })))}>Bắt đầu học</Button>
+    </Stack>}
+    {session?.status === "active" && question && <>
+      <Typography sx={{ mb: 1 }}>Đã trả lời {session.summary.answered}/{session.summary.total} câu · {session.summary.words} từ/cụm{question.is_retry ? " · Luyện lại câu sai" : ""}</Typography>
+      <Card variant="outlined"><CardContent>
+        <Typography variant="h4" sx={{ mb: 3, overflowWrap: "anywhere" }}>{question.prompt}</Typography>
+        {question.audio_id && <StoredAudio key={question.id} id={question.audio_id} />}
+        <Box component="form" onSubmit={e => { e.preventDefault(); if (!busy && !feedback && answer.trim()) void act(async () => setFeedback(await api<Feedback>(`/sessions/${session.id}/questions/${question.id}/answer`, { answer }))); }}>
+          {session.mode === "en_vi" ? <Stack spacing={1} sx={{ my: 2 }}>{question.options.map((option, i) => <Button key={option.id} disabled={busy || !!feedback} variant={answer === option.id ? "contained" : "outlined"} aria-pressed={answer === option.id} onClick={() => setAnswer(option.id)} sx={{ justifyContent: "flex-start", textTransform: "none" }}>{String.fromCharCode(65 + i)}. {option.text}</Button>)}</Stack> : <TextField fullWidth label="Đáp án tiếng Anh" value={answer} onChange={e => setAnswer(e.target.value)} disabled={busy || !!feedback} autoComplete="off" slotProps={{ htmlInput: { spellCheck: false, autoCapitalize: "none" } }} sx={{ my: 2 }} />}
+          {!feedback && <Button type="submit" variant="contained" disabled={busy || !answer.trim()}>Kiểm tra đáp án</Button>}
+        </Box>
+        {feedback && <Box sx={{ mt: 3 }} aria-live="polite">
+          <Alert severity={feedback.correct ? "success" : "warning"}>{feedback.correct ? "Chính xác!" : "Chưa đúng."} Đáp án: {feedback.accepted.join(" / ")}{feedback.retry_added ? ". Thẻ này sẽ xuất hiện lại cuối phiên." : ""}</Alert>
+          <Typography variant="h5" sx={{ mt: 2 }}>{feedback.word} {feedback.ipa}</Typography>
+          {feedback.audio_id && session.mode !== "listening" && <StoredAudio id={feedback.audio_id} />}
+          {feedback.meanings.map((meaning, index) => <Box key={index} sx={{ my: 2 }}><Typography sx={{ fontWeight: 600 }}>{meaning.meaning_vi} ({meaning.part_of_speech})</Typography>{meaning.examples.map((ex, i) => <Box key={i} sx={{ mt: 1 }}><Typography>{ex.english}</Typography><Typography color="text.secondary">{ex.vietnamese}</Typography></Box>)}</Box>)}
+          <Typography sx={{ mb: 2 }}>Đã trả lời đúng: {feedback.correct_count} lần · Ôn tiếp: {new Date(feedback.next_review_at).toLocaleString("vi-VN")}</Typography>
+          <Button disabled={busy} variant="contained" onClick={() => act(async () => receive(await api<Session>(`/sessions/${session.id}`)))}>Tiếp tục</Button>
+        </Box>}
+      </CardContent></Card>
+      <Button sx={{ mt: 2 }} disabled={busy} onClick={() => act(async () => receive(await api<Session>(`/sessions/${session.id}/finish`, {})))}>Kết thúc phiên</Button>
+    </>}
+  </Box>;
 }
