@@ -146,3 +146,14 @@ Không đưa mật khẩu PostgreSQL hoặc khóa server vào frontend.
 - Thiếu cấu hình/lỗi PostgreSQL: 503; lỗi Storage: 502; chưa có audio: 404.
 - Bản hiện tại dùng backend cá nhân/local. Trước khi đưa backend ra Internet cần
   xác thực người dùng cho các endpoint dùng quyền server.
+
+## Các màn hình
+
+- `/#library`: kho từ đã lưu, chi tiết và tra từ điển.
+- `/#upload`: tải tài liệu/dán văn bản, phân tích và xem kết quả. Nội dung được giữ
+  khi chuyển tab trong phiên hiện tại (không giữ sau khi tải lại trang).
+- `/#flashcards`: luyện lật thẻ với các từ/cụm có nghĩa đã lưu, theo tần suất giảm
+  dần, từng nhóm 20 mục trong kho. Có nghĩa, ví dụ, IPA và audio đã lưu nếu có.
+  Đây là chế độ luyện tập; chưa ghi nhớ/quên hoặc cập nhật lịch ôn vào DB.
+
+Điều hướng hỗ trợ URL hash và nút Back/Forward của trình duyệt.
