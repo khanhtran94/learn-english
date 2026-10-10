@@ -1,6 +1,10 @@
 backend/.venv/
 frontend/node_modules/
 .env
+backend/data/
+__pycache__/
+*.pyc
+
 # Python bytecode
 *.pyc
 *.pyo

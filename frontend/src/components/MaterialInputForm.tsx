@@ -93,7 +93,7 @@ function MaterialInputForm({
           disabled={loading || (!file && !text.trim())}
           onClick={onAnalyze}
         >
-          {loading ? "Processing..." : "Analyze Vocabulary"}
+          {loading ? "Đang phân tích và lưu..." : "Phân tích và lưu vào kho"}
         </Button>
       </CardContent>
     </Card>
