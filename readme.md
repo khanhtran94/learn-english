@@ -239,3 +239,9 @@ Migration: `backend/sql/study_sessions.sql` (đã áp dụng vào DB cấu hình
 `meanings.short_answers` cho phép lưu danh sách nghĩa ngắn riêng. Khi chưa có, ứng dụng tách nghĩa hiện tại theo dấu phẩy/chấm phẩy và bỏ chú thích trong ngoặc. Không gọi Gemini khi học. Cách này loại đáp án nhiễu trùng nghĩa theo chuỗi, chưa nhận biết mọi trường hợp đồng nghĩa ngữ nghĩa. Kho cần ít nhất một nghĩa khác phù hợp để tạo bài trắc nghiệm.
 
 Kiểm tra: từ thư mục backend chạy `.venv/Scripts/python.exe -m unittest discover -s tests`; frontend chạy `npm run build` và `npm run lint`.
+
+### Bài tập điền từ
+
+Trong Học flashcard, chọn **Điền từ vào câu ví dụ**. Ứng dụng lấy ví dụ tiếng Anh đã lưu, ẩn nguyên từ/cụm mục tiêu bằng `_____` và chấm phần nhập bằng đáp án gốc (không phân biệt hoa thường, chuẩn hóa khoảng trắng). Sau khi trả lời, hiển thị câu đầy đủ và cập nhật SRS qua cùng luồng các bài học khác. Nếu từ lặp trong câu, tất cả chỗ xuất hiện dùng chung một đáp án.
+
+Chỉ lấy ví dụ chứa nguyên từ/cụm: `learn` không khớp `learned`. Thẻ thiếu ví dụ phù hợp bị bỏ qua; không gọi Gemini tạo thêm câu. Chạy `backend/sql/study_cloze.sql` cho DB đã có bảng phiên học (đã áp dụng vào DB đang cấu hình).

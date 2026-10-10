@@ -1,4 +1,4 @@
-﻿"""Pure exercise generation and review rules. No model calls during study."""
+"""Pure exercise generation and review rules. No model calls during study."""
 import random
 import re
 import unicodedata
@@ -26,14 +26,33 @@ def short_answers(meanings):
 
 def build_question(entry, catalog, mode):
     answers = short_answers(entry['meanings'])
-    if not answers:
+    if not answers and mode != 'cloze':
         return None
     question = {
         'word': entry['normalized_text'], 'meanings': entry['meanings'],
         'ipa': entry.get('ipa'), 'audio_id': entry.get('audio_id'),
         'mode': mode, 'options': [], 'accepted': [],
     }
-    if mode == 'listening':
+    if mode == 'cloze':
+        # Match whole words/phrases, never a substring such as 'learn' in 'learned'.
+        target = entry['normalized_text'].strip()
+        if not target:
+            return None
+        pattern = re.compile(r"(?<![\w'-])" + r'\s+'.join(re.escape(part) for part in target.split()) + r"(?![\w'-])", re.IGNORECASE)
+        candidates = []
+        for meaning in entry['meanings']:
+            for example in meaning.get('examples', []):
+                sentence = example.get('english')
+                if not isinstance(sentence, str):
+                    continue
+                matches = list(pattern.finditer(sentence))
+                if matches:
+                    candidates.append((sentence, matches[0].group()))
+        if not candidates:
+            return None
+        sentence, answer = random.choice(candidates)
+        question.update(prompt=pattern.sub('_____', sentence), accepted=[answer], example_sentence=sentence)
+    elif mode == 'listening':
         if not question['audio_id']:
             return None
         question.update(prompt='Nghe và nhập từ/cụm tiếng Anh', accepted=[entry['normalized_text']])

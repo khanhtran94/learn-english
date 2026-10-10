@@ -1,10 +1,10 @@
-﻿begin;
+begin;
 alter table public.meanings add column if not exists short_answers text[] not null default '{}';
 alter table public.learning_progress add column if not exists correct_count integer not null default 0 check (correct_count >= 0);
 
 create table if not exists public.study_sessions (
     id uuid primary key default gen_random_uuid(),
-    mode text not null check (mode in ('en_vi', 'listening', 'vi_en')),
+    mode text not null check (mode in ('en_vi', 'listening', 'vi_en', 'cloze')),
     scope text not null check (scope in ('due_new', 'learned')),
     status text not null default 'active' check (status in ('active','completed','abandoned')),
     created_at timestamptz not null default now(),

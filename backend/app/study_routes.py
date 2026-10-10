@@ -1,4 +1,4 @@
-﻿"""Persistent personal study sessions. Answers and schedules are server-authoritative."""
+"""Persistent personal study sessions. Answers and schedules are server-authoritative."""
 from datetime import datetime, timezone
 from typing import Literal
 from uuid import UUID
@@ -14,7 +14,7 @@ router = APIRouter(prefix='/study', tags=['study'])
 
 
 class StartSession(BaseModel):
-    mode: Literal['en_vi', 'listening', 'vi_en']
+    mode: Literal['en_vi', 'listening', 'vi_en', 'cloze']
     scope: Literal['due_new', 'learned'] = 'due_new'
     size: int = Field(default=10, ge=1, le=30)
 
@@ -105,6 +105,8 @@ def start_session(request: StartSession):
                 questions.append((entry['id'], payload))
             if len(questions) >= request.size:
                 break
+        if not questions and request.mode == 'cloze':
+            raise HTTPException(422, 'Chưa có thẻ phù hợp để điền từ. Cần câu ví dụ tiếng Anh chứa nguyên từ/cụm cần học; hãy thử ôn từ đã học nếu chưa có thẻ đến hạn.')
         if not questions:
             raise HTTPException(422, 'Chưa có thẻ phù hợp: cần nghĩa ngắn; bài nghe cần audio; trắc nghiệm cần ít nhất một nghĩa khác làm đáp án nhiễu. Các thẻ đã học có thể chưa đến hạn.')
         cursor.execute('insert into public.study_sessions(mode,scope) values(%s,%s) returning id', (request.mode, request.scope))
@@ -157,7 +159,7 @@ def submit_answer(session_id: UUID, question_id: UUID, request: Answer):
             cursor.execute('insert into public.study_questions(session_id,entry_id,position,is_retry,payload) values(%s,%s,%s,true,%s)',
                            (str(session_id),entry_id,position,Json(question['payload'])))
         payload = question['payload']
-        feedback = {'correct': correct, 'word': payload['word'], 'accepted': payload['accepted'],
+        feedback = {'correct': correct, 'word': payload['word'], 'example_sentence': payload.get('example_sentence'), 'accepted': payload['accepted'],
                     'meanings': payload['meanings'], 'ipa': payload['ipa'], 'audio_id': payload['audio_id'],
                     'retry_added': retry_added, 'is_retry': question['is_retry'],
                     'correct_count': progress['correct_count'] + int(correct),
