@@ -1,14 +1,17 @@
-﻿import {
-  Alert, Box, Card, CardContent, Chip, Table, TableBody,
+import {
+  Alert, Button, Box, Card, CardContent, Chip, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from "@mui/material";
 import type { AnalyzeResponse } from "../types/analysis";
 
+import PhraseResults from "./PhraseResults";
+
 type AnalysisResultProps = {
   result: AnalyzeResponse;
+  onLookup: (term: string) => void;
 };
 
-function AnalysisResult({ result }: AnalysisResultProps) {
+function AnalysisResult({ result, onLookup }: AnalysisResultProps) {
   const { analysis } = result;
   const statistics = [
     { label: "Characters", value: result.character_count },
@@ -52,6 +55,7 @@ function AnalysisResult({ result }: AnalysisResultProps) {
           Word forms are grouped under their base word.
         </Typography>
 
+        <Typography variant="h6" component="h3" sx={{ fontWeight: 700, mb: 1 }}>Words</Typography>
         {analysis.words.length === 0 ? (
           <Alert severity="info">No vocabulary words were found in this text.</Alert>
         ) : (
@@ -70,7 +74,7 @@ function AnalysisResult({ result }: AnalysisResultProps) {
                 {analysis.words.map((entry) => (
                   <TableRow key={entry.word} hover sx={{ "& > *": { verticalAlign: "top" } }}>
                     <TableCell component="th" scope="row" sx={{ fontWeight: 600, overflowWrap: "anywhere" }}>
-                      {entry.word}
+                      <Button onClick={() => onLookup(entry.word)} sx={{ textTransform: "none", justifyContent: "flex-start", p: 0, minWidth: 0 }}>{entry.word}</Button>
                     </TableCell>
                     <TableCell align="right">{entry.frequency.toLocaleString()}</TableCell>
                     <TableCell sx={{ overflowWrap: "anywhere" }}>{entry.forms.join(", ") || "—"}</TableCell>
@@ -84,6 +88,8 @@ function AnalysisResult({ result }: AnalysisResultProps) {
             </Table>
           </TableContainer>
         )}
+
+        <PhraseResults analysis={analysis} onLookup={onLookup} />
 
         <TextField
           fullWidth

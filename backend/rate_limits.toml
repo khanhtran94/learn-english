@@ -1,0 +1,5 @@
+﻿# Shared quota for ALL Gemini requests: dictionary lookup + TTS.
+# Restart the backend after changing these values.
+[gemini]
+max_requests = 3
+window_seconds = 60
