@@ -62,6 +62,7 @@ function EntryDetails({ entry }: { entry: SavedEntry }) {
   );
 }
 function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
+  const [hasMeaning, setHasMeaning] = useState(true);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<LibraryPage | null>(null);
   const [error, setError] = useState("");
@@ -78,6 +79,7 @@ function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), page_size: "20", ignored: String(ignored) });
     if (kind) params.set("kind", kind);
+    if (!ignored) params.set("has_meaning", String(hasMeaning));
     apiFetch(`${API_URL}/entries?${params}`, { signal: controller.signal }).then(readResponse)
       .then((result: LibraryPage) => {
         if (controller.signal.aborted) return;
@@ -88,7 +90,7 @@ function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
       .catch((err: unknown) => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Không kết nối được backend."); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [page, kind, ignored, version]);
+  }, [page, kind, ignored, hasMeaning, version]);
   async function moveEntry() {
     if (!confirm || saving) return;
     setSaving(true); setActionError("");
@@ -100,6 +102,18 @@ function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
     finally { setSaving(false); }
   }
   return <Box>
+    {data && <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", mb: 2 }}>
+      <Chip label={`Tổng: ${(data.with_meanings + data.without_meanings).toLocaleString("vi-VN")}`} />
+      <Chip color="success" variant="outlined" label={`Đã có nghĩa: ${data.with_meanings.toLocaleString("vi-VN")}`} />
+      <Chip variant="outlined" label={`Chưa có nghĩa: ${data.without_meanings.toLocaleString("vi-VN")}`} />
+    </Stack>}
+    {!ignored && <Tabs value={hasMeaning ? "ready" : "pending"} onChange={(_, value) => {
+      setHasMeaning(value === "ready"); setPage(1); setData(null); setLoading(true); setError("");
+    }} sx={{ mb: 2 }}>
+      <Tab value="ready" label="Đã có nghĩa" />
+      <Tab value="pending" label="Chưa có nghĩa" />
+    </Tabs>}
+    {!ignored && hasMeaning && <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Đã học: đã trả lời đúng ít nhất một lần.</Typography>}
     <Stack direction="row" sx={{ alignItems: "center", justifyContent: "space-between", mb: 2 }}>
       <Typography variant="body2" color="text.secondary">{data ? `${data.total.toLocaleString("vi-VN")} từ/cụm · Tần suất cao trước` : "Kho từ của bạn"}</Typography>
       <Button onClick={refresh} disabled={loading}>Tải lại</Button>
@@ -110,7 +124,7 @@ function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
     <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2 }}>
       <Table size="small" aria-label={ignored ? "Danh sách từ bỏ qua" : "Kho từ đã lưu"} sx={{ minWidth: 680 }}>
         <TableHead sx={{ bgcolor: "action.hover" }}><TableRow>
-          {["Từ", "Loại", "Tần suất", "Chi tiết", "Tra nghĩa và lưu audio", ignored ? "Khôi phục" : "Delete"].map(label => <TableCell key={label} sx={{ fontWeight: 700, py: 2, whiteSpace: "nowrap" }}>{label}</TableCell>)}
+          {["Từ", "Loại", "Tần suất", "Chi tiết", ignored ? "Trạng thái" : hasMeaning ? "Học tập" : "Tra nghĩa và lưu audio", ignored ? "Khôi phục" : "Delete"].map(label => <TableCell key={label} sx={{ fontWeight: 700, py: 2, whiteSpace: "nowrap" }}>{label}</TableCell>)}
         </TableRow></TableHead>
         <TableBody>
           {!loading && !error && !data?.items.length && <TableRow><TableCell colSpan={6} sx={{ py: 5, textAlign: "center", color: "text.secondary" }}>Chưa có từ/cụm trong danh sách này.</TableCell></TableRow>}
@@ -119,7 +133,9 @@ function LibraryResults({ kind, ignored }: { kind: string; ignored: boolean }) {
             <TableCell><Chip size="small" variant="outlined" label={entry.kind === "word" ? "Từ" : "Cụm từ"} /></TableCell>
             <TableCell sx={{ fontVariantNumeric: "tabular-nums" }}>{entry.frequency.toLocaleString("vi-VN")}</TableCell>
             <TableCell><Button size="small" onClick={() => setSelected(entry)}>Chi tiết</Button></TableCell>
-            <TableCell>{ignored ? <Typography variant="body2" color="text.secondary">Đã bỏ qua</Typography> : <Button size="small" variant="outlined" disabled={loading} onClick={() => setEnrich(entry)}>Tra nghĩa và lưu audio</Button>}</TableCell>
+            <TableCell>{ignored ? <Typography variant="body2" color="text.secondary">Đã bỏ qua</Typography> : entry.meanings.length > 0 ?
+              <Chip size="small" color={(entry.learning_progress?.correct_count ?? 0) > 0 ? "success" : "default"} variant="outlined" label={(entry.learning_progress?.correct_count ?? 0) > 0 ? "Đã học" : "Chưa học"} /> :
+              <Button size="small" variant="outlined" disabled={loading} onClick={() => setEnrich(entry)}>Tra nghĩa và lưu audio</Button>}</TableCell>
             <TableCell><Button size="small" color={ignored ? "primary" : "error"} disabled={loading} onClick={() => { setActionError(""); setConfirm(entry); }}>{ignored ? "Khôi phục" : "Delete"}</Button></TableCell>
           </TableRow>)}
         </TableBody>

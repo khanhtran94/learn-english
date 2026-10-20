@@ -23,7 +23,7 @@ class LibraryTests(unittest.TestCase):
             'first_seen_at': datetime.now(timezone.utc), 'last_seen_at': datetime.now(timezone.utc),
             'meanings': [], 'pronunciations': [], 'learning_progress': None,
         }
-        self.cursor.fetchone.return_value = {'total': 1}
+        self.cursor.fetchone.return_value = {'total': 1, 'with_meanings': 0, 'without_meanings': 1}
         self.cursor.fetchall.return_value = [self.row]
         self.api = TestClient(app)
         self.addCleanup(self.api.close)
@@ -35,17 +35,17 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(data['items'][0]['normalized_text'], 'learn')
         self.assertEqual(data['items'][0]['frequency'], 6)
         self.assertIsNone(data['items'][0]['learning_progress'])
-        self.assertEqual(self.cursor.execute.call_args.args[1], (None, None, False, 20, 0))
+        self.assertEqual(self.cursor.execute.call_args.args[1], (None, None, False, None, None, 20, 0))
         self.connection.close.assert_called_once()
         self.connection.set_session.assert_called_once_with(readonly=True, isolation_level='REPEATABLE READ')
         self.assertEqual(self.connect.call_args.kwargs['sslmode'], 'require')
 
     def test_pagination_filter_and_empty(self):
         self.cursor.fetchall.return_value = []
-        self.cursor.fetchone.return_value = {'total': 0}
+        self.cursor.fetchone.return_value = {'total': 0, 'with_meanings': 0, 'without_meanings': 0}
         response = self.api.get('/entries?page=2&page_size=10&kind=phrase')
         self.assertEqual(response.json()['items'], [])
-        self.assertEqual(self.cursor.execute.call_args.args[1], ('phrase', 'phrase', False, 10, 10))
+        self.assertEqual(self.cursor.execute.call_args.args[1], ('phrase', 'phrase', False, None, None, 10, 10))
         for query in ('page=0', 'page_size=101', 'kind=invalid'):
             self.assertEqual(self.api.get('/entries?' + query).status_code, 422)
 
@@ -55,6 +55,26 @@ class LibraryTests(unittest.TestCase):
         data = self.api.get('/entries').json()['items'][0]
         self.assertEqual(data['meanings'][0]['meaning_vi'], 'học')
         self.assertEqual(data['learning_progress']['interval_days'], 1)
+
+    def test_meaning_filter_and_counts_are_independent_of_page(self):
+        self.cursor.fetchone.return_value = {'total': 35, 'with_meanings': 23, 'without_meanings': 12}
+        self.cursor.fetchall.return_value = []
+        for value, expected_total, flag in [('true', 23, True), ('false', 12, False)]:
+            response = self.api.get(f'/entries?has_meaning={value}&page=2&page_size=10&kind=word')
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data['total'], expected_total)
+            self.assertEqual(data['with_meanings'], 23)
+            self.assertEqual(data['without_meanings'], 12)
+            self.assertEqual(self.cursor.execute.call_args.args[1], ('word', 'word', False, flag, flag, 10, 10))
+            self.assertIn('exists(select 1 from public.meanings', self.cursor.execute.call_args.args[0])
+        self.assertEqual(self.api.get('/entries?has_meaning=invalid').status_code, 422)
+
+    def test_ignored_counts_are_scoped_separately(self):
+        response = self.api.get('/entries?ignored=true')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['without_meanings'], 1)
+        self.assertEqual(self.cursor.execute.call_args.args[1], (None, None, True, None, None, 20, 0))
 
     def test_db_failure_is_safe_and_connection_closes(self):
         self.cursor.execute.side_effect = psycopg2.OperationalError('secret-password')

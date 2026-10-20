@@ -255,3 +255,9 @@ Delete chuyển mục vào `public.ignored_entries`. Đây là bảng danh sách
 Khi phân tích tài liệu, từ/cụm khớp chính xác theo dạng chuẩn hóa và loại sẽ không được tăng tần suất, đưa vào kết quả phân tích hoặc hàng đợi tra nghĩa. Bỏ qua một từ không tự động bỏ các cụm chứa từ đó. Từ bỏ qua không được dùng để tạo bài học mới hoặc đáp án nhiễu. Phiên đang học có câu chưa trả lời về từ đó được kết thúc, giữ nguyên kết quả đã trả lời; cần bắt đầu phiên mới.
 
 Migration: `backend/sql/ignored_entries.sql` đã áp dụng vào Supabase đang cấu hình. Với DB khác, chạy migration trước khi deploy backend mới. Không cần thay đổi biến môi trường.
+### Phân nhóm kho từ theo nghĩa
+
+Kho từ có hai nhóm **Đã có nghĩa** và **Chưa có nghĩa**, phân loại theo dữ liệu trong bảng `meanings`, không theo trạng thái lần gọi API. Tổng số, số đã có nghĩa và số chưa có nghĩa được tính trên toàn bộ danh sách theo bộ lọc loại; danh sách bỏ qua được đếm riêng. API `/entries` hỗ trợ `has_meaning=true|false` và trả thêm `with_meanings`, `without_meanings`; `total` là số mục của nhóm đang chọn để phân trang.
+
+Nhóm đã có nghĩa thay nút tra nghĩa bằng trạng thái học: **Đã học** khi `correct_count > 0`, còn lại **Chưa học**. Nhóm chưa có nghĩa vẫn có nút tra nghĩa và lưu audio. Khi tra xong, tải lại danh sách để cập nhật nhóm và số lượng. Không cần migration DB cho thay đổi này.
+

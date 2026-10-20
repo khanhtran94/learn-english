@@ -60,6 +60,8 @@ class LibraryPage(BaseModel):
     total: int
     page: int
     page_size: int
+    with_meanings: int
+    without_meanings: int
 
 
 # Correlated aggregates keep entries visible even when child tables have no rows.
@@ -92,6 +94,7 @@ select e.id, e.normalized_text, e.kind, e.frequency, e.lookup_status,
 from public.entries e
 where (%s is null or e.kind = %s)
 and exists(select 1 from public.ignored_entries i where i.entry_id=e.id) = %s
+and (%s is null or exists(select 1 from public.meanings m where m.entry_id=e.id) = %s)
 order by e.frequency desc, e.id
 limit %s offset %s
 """
@@ -103,16 +106,23 @@ def list_entries(
     page_size: int = Query(20, ge=1, le=100),
     kind: Literal['word', 'phrase'] | None = None,
     ignored: bool = False,
+    has_meaning: bool | None = None,
 ):
     with database_cursor() as cursor:
         cursor.execute(
-            'select count(*) as total from public.entries e where (%s is null or kind = %s) and exists(select 1 from public.ignored_entries i where i.entry_id=e.id) = %s',
+            '''select count(*) as total,
+                count(*) filter(where exists(select 1 from public.meanings m where m.entry_id=e.id)) as with_meanings,
+                count(*) filter(where not exists(select 1 from public.meanings m where m.entry_id=e.id)) as without_meanings
+                from public.entries e where (%s is null or kind = %s)
+                and exists(select 1 from public.ignored_entries i where i.entry_id=e.id) = %s''',
             (kind, kind, ignored),
         )
-        total = cursor.fetchone()['total']
-        cursor.execute(ENTRY_SQL, (kind, kind, ignored, page_size, (page - 1) * page_size))
+        counts = cursor.fetchone()
+        total = counts['total'] if has_meaning is None else counts['with_meanings' if has_meaning else 'without_meanings']
+        cursor.execute(ENTRY_SQL, (kind, kind, ignored, has_meaning, has_meaning, page_size, (page - 1) * page_size))
         items = [SavedEntry.model_validate(row) for row in cursor.fetchall()]
-    return LibraryPage(items=items, total=total, page=page, page_size=page_size)
+    return LibraryPage(items=items, total=total, page=page, page_size=page_size,
+                       with_meanings=counts['with_meanings'], without_meanings=counts['without_meanings'])
 
 
 @router.get('/pronunciations/{pronunciation_id}/audio')
