@@ -91,6 +91,7 @@ select e.id, e.normalized_text, e.kind, e.frequency, e.lookup_status,
        ) as learning_progress
 from public.entries e
 where (%s is null or e.kind = %s)
+and exists(select 1 from public.ignored_entries i where i.entry_id=e.id) = %s
 order by e.frequency desc, e.id
 limit %s offset %s
 """
@@ -101,14 +102,15 @@ def list_entries(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     kind: Literal['word', 'phrase'] | None = None,
+    ignored: bool = False,
 ):
     with database_cursor() as cursor:
         cursor.execute(
-            'select count(*) as total from public.entries where (%s is null or kind = %s)',
-            (kind, kind),
+            'select count(*) as total from public.entries e where (%s is null or kind = %s) and exists(select 1 from public.ignored_entries i where i.entry_id=e.id) = %s',
+            (kind, kind, ignored),
         )
         total = cursor.fetchone()['total']
-        cursor.execute(ENTRY_SQL, (kind, kind, page_size, (page - 1) * page_size))
+        cursor.execute(ENTRY_SQL, (kind, kind, ignored, page_size, (page - 1) * page_size))
         items = [SavedEntry.model_validate(row) for row in cursor.fetchall()]
     return LibraryPage(items=items, total=total, page=page, page_size=page_size)
 
@@ -134,3 +136,36 @@ def saved_audio(pronunciation_id: UUID):
         return {'url': signed['signedURL'], 'expires_in': 600}
     except Exception as exc:
         raise HTTPException(502, 'Không tải được audio từ Storage. Kiểm tra file và quyền truy cập bucket.') from exc
+
+
+@router.post('/{entry_id}/ignore')
+def ignore_entry(entry_id: UUID):
+    with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
+        cursor.execute('select pg_try_advisory_xact_lock(hashtextextended(%s,0)) as acquired',
+                       ('enrich:' + str(entry_id),))
+        if not cursor.fetchone()['acquired']:
+            raise HTTPException(409, 'Mục này đang tra nghĩa/lưu audio. Vui lòng thử lại sau.')
+        cursor.execute('select normalized_text,kind from public.entries where id=%s', (str(entry_id),))
+        entry = cursor.fetchone()
+        if not entry:
+            raise HTTPException(404, 'Không tìm thấy từ/cụm.')
+        cursor.execute('''insert into public.ignored_entries(entry_id,normalized_text,kind)
+            values(%s,%s,%s) on conflict(entry_id) do nothing''',
+                       (str(entry_id), entry['normalized_text'], entry['kind']))
+        # Retain the full session history, but don't keep serving archived questions.
+        cursor.execute("""update public.study_sessions s set status='abandoned',completed_at=now()
+            where status='active' and exists(select 1 from public.study_questions q
+                where q.session_id=s.id and q.entry_id=%s and q.answered_at is null)""", (str(entry_id),))
+    return {'ignored': True, 'entry_id': str(entry_id)}
+
+
+@router.post('/{entry_id}/restore')
+def restore_entry(entry_id: UUID):
+    with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
+        cursor.execute('select id from public.entries where id=%s', (str(entry_id),))
+        if not cursor.fetchone():
+            raise HTTPException(404, 'Không tìm thấy từ/cụm.')
+        cursor.execute('delete from public.ignored_entries where entry_id=%s', (str(entry_id),))
+    return {'ignored': False, 'entry_id': str(entry_id)}

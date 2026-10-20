@@ -35,7 +35,7 @@ class LibraryTests(unittest.TestCase):
         self.assertEqual(data['items'][0]['normalized_text'], 'learn')
         self.assertEqual(data['items'][0]['frequency'], 6)
         self.assertIsNone(data['items'][0]['learning_progress'])
-        self.assertEqual(self.cursor.execute.call_args.args[1], (None, None, 20, 0))
+        self.assertEqual(self.cursor.execute.call_args.args[1], (None, None, False, 20, 0))
         self.connection.close.assert_called_once()
         self.connection.set_session.assert_called_once_with(readonly=True, isolation_level='REPEATABLE READ')
         self.assertEqual(self.connect.call_args.kwargs['sslmode'], 'require')
@@ -45,7 +45,7 @@ class LibraryTests(unittest.TestCase):
         self.cursor.fetchone.return_value = {'total': 0}
         response = self.api.get('/entries?page=2&page_size=10&kind=phrase')
         self.assertEqual(response.json()['items'], [])
-        self.assertEqual(self.cursor.execute.call_args.args[1], ('phrase', 'phrase', 10, 10))
+        self.assertEqual(self.cursor.execute.call_args.args[1], ('phrase', 'phrase', False, 10, 10))
         for query in ('page=0', 'page_size=101', 'kind=invalid'):
             self.assertEqual(self.api.get('/entries?' + query).status_code, 422)
 

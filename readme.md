@@ -245,3 +245,13 @@ Kiểm tra: từ thư mục backend chạy `.venv/Scripts/python.exe -m unittest
 Trong Học flashcard, chọn **Điền từ vào câu ví dụ**. Ứng dụng lấy ví dụ tiếng Anh đã lưu, ẩn nguyên từ/cụm mục tiêu bằng `_____` và chấm phần nhập bằng đáp án gốc (không phân biệt hoa thường, chuẩn hóa khoảng trắng). Sau khi trả lời, hiển thị câu đầy đủ và cập nhật SRS qua cùng luồng các bài học khác. Nếu từ lặp trong câu, tất cả chỗ xuất hiện dùng chung một đáp án.
 
 Chỉ lấy ví dụ chứa nguyên từ/cụm: `learn` không khớp `learned`. Thẻ thiếu ví dụ phù hợp bị bỏ qua; không gọi Gemini tạo thêm câu. Chạy `backend/sql/study_cloze.sql` cho DB đã có bảng phiên học (đã áp dụng vào DB đang cấu hình).
+
+### Kho từ dạng bảng và danh sách bỏ qua
+
+Kho từ dùng bảng MUI với cột từ, loại, tần suất, chi tiết, tra nghĩa/lưu audio và Delete. Chi tiết mở trong dialog, gồm nghĩa, ví dụ, phiên âm, audio và tiến độ học. Tra nghĩa chỉ chạy khi bấm nút trên dòng; đóng dialog dừng chờ phía trình duyệt, yêu cầu đã tới backend có thể vẫn hoàn thành.
+
+Delete chuyển mục vào `public.ignored_entries`. Đây là bảng danh sách bỏ qua có tham chiếu tới entry gốc: không xóa entry, nghĩa, audio, tiến độ hoặc lịch sử. Tab Danh sách bỏ qua cho phép xem lại và khôi phục. Không nhân bản dữ liệu từ điển/audio.
+
+Khi phân tích tài liệu, từ/cụm khớp chính xác theo dạng chuẩn hóa và loại sẽ không được tăng tần suất, đưa vào kết quả phân tích hoặc hàng đợi tra nghĩa. Bỏ qua một từ không tự động bỏ các cụm chứa từ đó. Từ bỏ qua không được dùng để tạo bài học mới hoặc đáp án nhiễu. Phiên đang học có câu chưa trả lời về từ đó được kết thúc, giữ nguyên kết quả đã trả lời; cần bắt đầu phiên mới.
+
+Migration: `backend/sql/ignored_entries.sql` đã áp dụng vào Supabase đang cấu hình. Với DB khác, chạy migration trước khi deploy backend mới. Không cần thay đổi biến môi trường.

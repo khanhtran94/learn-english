@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 import { API_URL, apiFetch } from "../services/api";
 
-type Props = { entryIds: string[]; onComplete?: () => void };
+type Props = { entryIds: string[]; onComplete?: () => void; autoStart?: boolean };
 
-export default function EnrichmentQueue({ entryIds, onComplete }: Props) {
-  const [running, setRunning] = useState(false);
+export default function EnrichmentQueue({ entryIds, onComplete, autoStart = false }: Props) {
+  const [running, setRunning] = useState(autoStart);
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const [retryAt, setRetryAt] = useState(0);

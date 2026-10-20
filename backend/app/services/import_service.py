@@ -32,6 +32,23 @@ def save_analysis(analysis: dict) -> dict:
     # Consistent ordering reduces deadlocks for concurrent overlapping imports.
     rows = [(term, kind, frequency) for (term, kind), frequency in sorted(frequencies.items())]
     with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
+        cursor.execute('select normalized_text,kind from public.ignored_entries')
+        ignored = {(row['normalized_text'], row['kind']) for row in cursor.fetchall()}
+        rows = [row for row in rows if (row[0], row[1]) not in ignored]
+        summary.update(word_count=sum(row[1] == 'word' for row in rows),
+                       phrase_count=sum(row[1] == 'phrase' for row in rows),
+                       occurrences_added=sum(row[2] for row in rows))
+        # Return only retained terms in the analysis shown after upload as well.
+        for collection, field, kind in [('words', 'word', 'word'), ('phrases', 'phrase', 'phrase')]:
+            analysis[collection] = [item for item in analysis[collection]
+                if (' '.join(item[field].lower().split()), kind) not in ignored]
+        analysis['total_words'] = sum(item['frequency'] for item in analysis['words'])
+        analysis['unique_words'] = len(analysis['words'])
+        analysis['total_phrases'] = sum(item['frequency'] for item in analysis['phrases'])
+        analysis['unique_phrases'] = len(analysis['phrases'])
+        if not rows:
+            return summary
         entries = execute_values(cursor, '''
             insert into public.entries (normalized_text, kind, frequency)
             values %s
