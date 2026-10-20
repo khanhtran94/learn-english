@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Alert, Box, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import StoredAudio from "../components/StoredAudio";
-import { API_URL } from "../services/api";
+import { API_URL, apiFetch } from "../services/api";
 
 type Mode = "en_vi" | "listening" | "vi_en" | "cloze";
 type Session = { id: string; status: string; mode: Mode; summary: { total: number; answered: number; correct: number; incorrect: number; words: number }; question: null | { id: string; is_retry: boolean; prompt: string; audio_id: string | null; options: { id: string; text: string }[] } };
 type Feedback = { example_sentence?: string | null; correct: boolean; word: string; accepted: string[]; correct_count: number; next_review_at: string; retry_added: boolean; audio_id: string | null; ipa: string | null; meanings: { meaning_vi: string; part_of_speech: string; examples: { english?: string; vietnamese?: string }[] }[] };
 async function api<T>(path: string, body?: unknown): Promise<T> {
-  const response = await fetch(`${API_URL}/study${path}`, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const response = await apiFetch(`${API_URL}/study${path}`, body === undefined ? undefined : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const result = await response.json();
   if (!response.ok) throw new Error(typeof result.detail === "string" ? result.detail : "Không thực hiện được yêu cầu. Vui lòng thử lại.");
   return result;

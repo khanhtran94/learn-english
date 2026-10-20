@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from fastapi.testclient import TestClient
+from auth_test_client import AuthenticatedClient as TestClient
 
 from app.main import app
 from app.services.dictionary_service import DictionaryError, DictionaryService, get_dictionary_service

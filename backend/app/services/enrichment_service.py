@@ -29,6 +29,7 @@ class EntryRepository:
                    exists(select 1 from public.pronunciations p where p.entry_id=e.id
                           and p.audio_status='ready' and p.audio_path is not null) as has_audio
             from public.entries e where e.id=%s
+            and not exists(select 1 from public.ignored_entries i where i.entry_id=e.id)
         ''', (self.entry_id,))
         row = self.cursor.fetchone()
         if row is None:

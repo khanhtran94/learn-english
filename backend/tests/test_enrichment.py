@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
+from auth_test_client import AuthenticatedClient as TestClient
 from app.main import app
 from app.dictionary_models import LookupResponse
 from app.services.dictionary_service import DictionaryError, get_dictionary_service

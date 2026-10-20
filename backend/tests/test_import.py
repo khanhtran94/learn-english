@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import psycopg2
-from fastapi.testclient import TestClient
+from auth_test_client import AuthenticatedClient as TestClient
 
 from app.main import app
 from app.services.import_service import save_analysis

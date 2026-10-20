@@ -1,4 +1,4 @@
-﻿import unittest
+import unittest
 from datetime import datetime, timedelta, timezone
 from app.services.study_rules import build_question, grade, review_update, short_answers
 from app.study_routes import submit_answer, Answer
@@ -50,6 +50,6 @@ class StudyRulesTests(unittest.TestCase):
         with patch('app.study_routes.database_cursor') as db:
             db.return_value.__enter__.return_value=cursor
             self.assertEqual(submit_answer(uuid4(),uuid4(),Answer(answer='learn')),{'correct':True})
-        self.assertEqual(cursor.execute.call_count,2)
+        self.assertFalse(any('update public.learning_progress' in call.args[0] for call in cursor.execute.call_args_list))
 
 if __name__=='__main__': unittest.main()

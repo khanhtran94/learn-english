@@ -1,4 +1,25 @@
 export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const SESSION_KEY = "learn-english-session";
+export const AUTH_CHANGED = "learn-english-auth-changed";
+
+export function sessionToken() {
+  return sessionStorage.getItem(SESSION_KEY);
+}
+
+export function setSessionToken(token: string | null) {
+  if (token) sessionStorage.setItem(SESSION_KEY, token);
+  else sessionStorage.removeItem(SESSION_KEY);
+  window.dispatchEvent(new Event(AUTH_CHANGED));
+}
+
+export async function apiFetch(input: string, init?: RequestInit) {
+  const token = sessionToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(input, { ...init, headers });
+  if (response.status === 401 && token === sessionToken()) setSessionToken(null);
+  return response;
+}
 
 export class ApiError extends Error {
   retryAfter: number;
@@ -9,7 +30,7 @@ export class ApiError extends Error {
 }
 
 export async function dictionaryRequest(path: "lookup" | "audio", term: string, signal: AbortSignal) {
-  const response = await fetch(`${API_URL}/dictionary/${path}`, {
+  const response = await apiFetch(`${API_URL}/dictionary/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ term }),

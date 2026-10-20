@@ -33,6 +33,8 @@ export interface SavedEntry {
 }
 
 export interface LibraryPage {
+  with_meanings: number;
+  without_meanings: number;
   items: SavedEntry[];
   total: number;
   page: number;

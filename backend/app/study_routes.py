@@ -72,6 +72,7 @@ def get_session(session_id: UUID):
 def start_session(request: StartSession):
     now = datetime.now(timezone.utc)
     with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
         cursor.execute("select pg_advisory_xact_lock(hashtextextended('personal-study-session',0))")
         cursor.execute("select id from public.study_sessions where status='active' limit 1")
         if cursor.fetchone():
@@ -86,7 +87,8 @@ def start_session(request: StartSession):
                 (select p.ipa from public.pronunciations p where p.entry_id=e.id and p.ipa is not null limit 1) as ipa,
                 coalesce(l.status,'new') as learning_status,l.next_review_at
             from public.entries e left join public.learning_progress l on l.entry_id=e.id
-            where exists(select 1 from public.meanings m where m.entry_id=e.id)
+            where not exists(select 1 from public.ignored_entries i where i.entry_id=e.id)
+            and exists(select 1 from public.meanings m where m.entry_id=e.id)
         ''')
         catalog = [dict(row) for row in cursor.fetchall()]
         for entry in catalog:
@@ -119,6 +121,7 @@ def start_session(request: StartSession):
 @router.post('/sessions/{session_id}/questions/{question_id}/answer')
 def submit_answer(session_id: UUID, question_id: UUID, request: Answer):
     with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
         # Serialize responses across tabs; replaying a completed question never counts twice.
         cursor.execute('select status from public.study_sessions where id=%s for update', (str(session_id),))
         session = cursor.fetchone()
@@ -176,5 +179,6 @@ def submit_answer(session_id: UUID, question_id: UUID, request: Answer):
 @router.post('/sessions/{session_id}/finish')
 def finish_session(session_id: UUID):
     with database_cursor(readonly=False) as cursor:
+        cursor.execute("select pg_advisory_xact_lock(hashtextextended('library-ignore',0))")
         cursor.execute("update public.study_sessions set status='abandoned',completed_at=now() where id=%s and status='active'", (str(session_id),))
         return session_view(cursor, session_id)

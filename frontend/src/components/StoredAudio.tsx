@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Box, Button } from "@mui/material";
-import { API_URL } from "../services/api";
+import { API_URL, apiFetch } from "../services/api";
 
 async function readResponse(response: Response) {
   const data = await response.json().catch(() => null);
@@ -16,7 +16,7 @@ export default function StoredAudio({ id }: { id: string }) {
     setLoading(true);
     setError("");
     try {
-      const data = await fetch(`${API_URL}/entries/pronunciations/${id}/audio`).then(readResponse);
+      const data = await apiFetch(`${API_URL}/entries/pronunciations/${id}/audio`).then(readResponse);
       setUrl(data.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Không tải được audio.");
