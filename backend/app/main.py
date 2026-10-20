@@ -16,8 +16,11 @@ from app.library_routes import router as library_router
 from app.enrichment_routes import router as enrichment_router
 
 from app.study_routes import router as study_router
+from app.auth import router as auth_router, require_login
 
 app = FastAPI(title="Learn English API")
+app.middleware("http")(require_login)
+app.include_router(auth_router)
 app.include_router(dictionary_router)
 app.include_router(library_router)
 app.include_router(enrichment_router)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
-import { API_URL } from "../services/api";
+import { API_URL, apiFetch } from "../services/api";
 
 type Props = { entryIds: string[]; onComplete?: () => void };
 
@@ -21,7 +21,7 @@ export default function EnrichmentQueue({ entryIds, onComplete }: Props) {
     const run = async () => {
       setWaiting(false);
       try {
-        const response = await fetch(`${API_URL}/entries/${entryId}/enrich`, { method: "POST", signal: controller.signal });
+        const response = await apiFetch(`${API_URL}/entries/${entryId}/enrich`, { method: "POST", signal: controller.signal });
         const data = await response.json().catch(() => null);
         if (controller.signal.aborted) return;
         if (response.status === 429 || response.status === 409 || data?.retry_after > 0) {

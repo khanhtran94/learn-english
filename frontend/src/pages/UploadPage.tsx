@@ -5,7 +5,7 @@ import MaterialInputForm from "../components/MaterialInputForm";
 import AnalysisResult from "../components/AnalysisResult";
 import type { AnalyzeResponse } from "../types/analysis";
 import EnrichmentQueue from "../components/EnrichmentQueue";
-import { API_URL } from "../services/api";
+import { API_URL, apiFetch } from "../services/api";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -69,7 +69,7 @@ export default function UploadPage({ onLookup }: { onLookup: (term: string) => v
         formData.append("text", text);
       }
 
-      const response = await fetch(`${API_URL}/analyze`, {
+      const response = await apiFetch(`${API_URL}/analyze`, {
         method: "POST",
         body: formData,
       });

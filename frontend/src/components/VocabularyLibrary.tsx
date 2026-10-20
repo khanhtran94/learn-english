@@ -7,7 +7,7 @@ import {
   Stack, TextField, Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { API_URL } from "../services/api";
+import { API_URL, apiFetch } from "../services/api";
 import type { LibraryPage, SavedEntry } from "../types/library";
 
 const lookupLabels: Record<string, string> = {
@@ -82,7 +82,7 @@ function LibraryResults({ kind }: { kind: string }) {
     const controller = new AbortController();
     const params = new URLSearchParams({ page: String(page), page_size: "20" });
     if (kind) params.set("kind", kind);
-    fetch(`${API_URL}/entries?${params}`, { signal: controller.signal })
+    apiFetch(`${API_URL}/entries?${params}`, { signal: controller.signal })
       .then(readResponse)
       .then((result: LibraryPage) => { if (!controller.signal.aborted) setData(result); })
       .catch((err: unknown) => { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Không thể kết nối backend."); })

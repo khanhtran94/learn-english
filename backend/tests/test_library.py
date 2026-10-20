@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import psycopg2
-from fastapi.testclient import TestClient
+from auth_test_client import AuthenticatedClient as TestClient
 from app.main import app
 from app.database import database_cursor
 

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
+from auth_test_client import AuthenticatedClient as TestClient
 
 from app.main import app
 from app.services.vocabulary_service import MAX_TEXT_LENGTH, analyze_vocabulary
